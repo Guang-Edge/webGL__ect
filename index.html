@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#080e18" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%230b1421'/%3E%3Ctext x='4' y='30' fill='%2377e8d4' font-size='36'%3E≈%3C/text%3E%3C/svg%3E" />
+  <meta name="description" content="基于 WebGL2 的 GPU 风场粒子追踪实验平台" />
+  <title>ATMOS / 风场实验室</title>
+  <link rel="stylesheet" href="./src/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><span class="brand-mark">≈</span> ATMOS <span class="brand-divider">/</span><span class="brand-sub">风场实验室</span></a>
+    <div class="header-meta"><span>GPU COMPUTE</span><span class="badge">WebGL 2.0</span><a href="https://github.com/Guang-Edge/webGL__ect" target="_blank" rel="noreferrer">GitHub ↗</a></div>
+  </header>
+  <main>
+    <section class="intro"><div><div class="eyebrow">ATMOSPHERIC FLOW EXPLORER</div><h1>看见风的流动<span>。</span></h1><p>在 GPU 上追踪每一条轨迹，探索不断演化的向量场。</p></div><div class="experiment-tag">实验原型 <b>v0.1</b><small>合成数据 · 二维平流模型</small></div></section>
+    <div class="workspace">
+      <section class="viewport" aria-label="交互式风场视图">
+        <canvas id="wind" aria-label="风场粒子可视化，拖动旋转，滚轮缩放"></canvas>
+        <div class="viewport-top"><div><span class="live-dot"></span><strong id="scene-name">双涡旋风场</strong><span class="secondary" id="source-label">SYNTHETIC FIELD</span></div><div class="view-tabs" role="group" aria-label="视角"><button id="view-2d" class="active">二维</button><button id="view-3d">三维倾斜</button></div></div>
+        <div class="view-label"><span>FLOW DOMAIN</span><b id="domain-label">600 × 400 km</b><small id="camera-hint">滚轮缩放 · 拖动平移</small></div>
+        <div class="compass"><span>N</span><div>↑</div><small>Y / 北</small></div>
+        <div class="legend"><span>风速 <small>m/s</small></span><div class="color-ramp"></div><div class="legend-ticks"><span>0</span><span>15</span><span>30</span><span id="legend-max">45+</span></div></div>
+        <button class="reset-view" id="reset-view" title="重置视角">重置视角</button>
+        <div class="error" id="error" role="alert" hidden></div>
+        <div class="viewport-bottom"><span id="run-state">● 正在模拟</span><span>周期边界 <b>·</b> <span id="grid-label">128 × 128</span> 风场网格</span></div>
+      </section>
+      <aside class="panel">
+        <div class="panel-heading"><h2>实验控制</h2><span>LIVE PARAMETERS</span></div>
+        <label class="field-label" for="preset">风场模型</label><select id="preset"><option value="0">双涡旋 / Double vortex</option><option value="1">西风急流 / Jet stream</option><option value="2">均匀流 / Uniform flow</option></select>
+        <p class="help" id="field-description">两个反向旋转的涡旋叠加背景风，观察粒子在剪切流中的轨迹。</p>
+        <div class="section-rule"></div>
+        <label class="field-label" for="particles">粒子数量 <output id="particle-output">65,536</output></label><select id="particles"><option value="128">16,384 · 轻量</option><option value="256" selected>65,536 · 标准</option><option value="512">262,144 · 高密度</option></select>
+        <label class="field-label" for="integrator">数值积分</label><select id="integrator"><option value="1">RK2 · 中点法</option><option value="0">Euler · 显式欧拉</option></select>
+        <label class="field-label" for="speed">时间倍率 <output id="speed-output">1,800×</output></label><input id="speed" type="range" min="100" max="3600" step="100" value="1800" />
+        <label class="field-label" for="trail">轨迹持续时间 <output id="trail-output">1.8 s</output></label><input id="trail" type="range" min="0.2" max="4" step="0.1" value="1.8" />
+        <div class="section-rule"></div>
+        <label class="toggle-row" for="vectors"><span>风向矢量</span><input id="vectors" type="checkbox" checked /></label>
+        <label class="toggle-row" for="evolve"><span>动态风场</span><input id="evolve" type="checkbox" checked /></label>
+        <div class="actions"><button id="pause" class="primary">暂停模拟</button><button id="reset">重新播种</button></div>
+        <div class="data-section"><label for="data-file" class="upload-button">导入风场 JSON<input id="data-file" type="file" accept=".json,application/json" /></label><a href="./data/uniform.json" download>下载数据示例</a></div>
+        <p id="notice" class="help" role="status">支持规则网格 u / v 分量，单位 m/s。</p>
+      </aside>
+    </div>
+    <section class="metrics" aria-label="运行指标"><div><span>活动粒子</span><strong id="stat-particles">65,536</strong><small>GPU 并行更新</small></div><div><span>渲染帧率</span><strong><span id="fps">—</span><em> FPS</em></strong><small>实际帧率 · 设备相关</small></div><div><span>模拟时间</span><strong id="sim-time">00:00:00</strong><small>固定步长 ≤ 30 s</small></div><div><span>计算管线</span><strong class="pipeline">RGBA32F <em> / </em> RK2</strong><small>双缓冲纹理 · Fragment Shader</small></div></section>
+    <footer><span>ATMOS LAB <b>·</b> 浏览器里的流场实验</span><p>研究框架：二维速度场驱动粒子平流，三维为平面投影视图；不包含真实天气预报或 Navier–Stokes 求解。</p></footer>
+  </main>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
